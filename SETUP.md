@@ -4,7 +4,7 @@ How this repo's tooling reaches a phone, a tablet, and the desktop.
 
 ## Plugins — needs the setup script
 
-`.claude/settings.json` declares nine plugins across five marketplaces. Those
+`.claude/settings.json` declares eight plugins across five marketplaces. Those
 declarations are necessary but **not sufficient**: a project-scope file cannot
 register a marketplace that lives on a network location.
 
@@ -39,11 +39,20 @@ intent, and the CLI reads it to name each marketplace on registration.
 | `session-report` | `anthropics/claude-plugins-official` |
 | `notion` | `anthropics/claude-plugins-official` |
 | `imessage` | `anthropics/claude-plugins-official` |
-| `github` | `anthropics/claude-plugins-official` |
 | `ponytail` | `DietrichGebert/ponytail` |
 | `watch` | `bradautomates/claude-video` |
 | `humanizer` | `blader/humanizer` |
 | `caveman` | `JuliusBrussee/caveman` |
+
+`github@claude-plugins-official` is deliberately **not** in that list. Its
+`.mcp.json` authenticates with `Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`, and
+with that variable unset the header goes out unresolved — every cloud session
+opened with `Error POSTing to endpoint: bad request: Authorization header is
+badly formatted`. Setting it would mean pasting a PAT into the environment's
+plaintext variables box (see the credentials row below). It buys nothing:
+cloud sessions already carry an authenticated `github` MCP server pointed at
+the same `api.githubcopilot.com/mcp/`, exposing the same `mcp__github__*`
+tools.
 
 Two further conditions:
 
@@ -129,7 +138,7 @@ The desktop is on 1.42.3.
 | Plugins enabled only in `~/.claude/settings.json` | User scope does not transfer. This repo declares them instead. |
 | MCP servers added at user or local scope | Those write `~/.claude.json`. Use `claude mcp add --scope project` to write a committed `.mcp.json`. |
 | The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. |
-| Credentials of any kind | Use the environment's API credentials store. |
+| Credentials of any kind | The cloud environment has no secret store. Its **Environment variables** box is plaintext and labelled "visible to anyone using this environment". Anything needing a real secret does not belong in a cloud session. |
 
 ## Skills on claude.ai
 
