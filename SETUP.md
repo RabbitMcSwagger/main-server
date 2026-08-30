@@ -26,7 +26,7 @@ Two conditions apply:
 - On a local machine, `extraKnownMarketplaces` from a project file only takes
   effect after the workspace trust dialog is accepted for this folder.
 
-## What needs one manual step: GSD
+## GSD — configured, no action needed
 
 GSD is the npm package `get-shit-done-cc`. It is not a plugin, so it cannot be
 declared in `.claude/settings.json`. It installs 66 skills, 33 agents, and a
@@ -34,14 +34,17 @@ payload directory under `~/.claude/`, which is machine-local and not part of
 the clone.
 
 Rather than vendoring 4.5 MB of generated files into this repo — where they
-would immediately start drifting from the published package — install it in the
-cloud environment's setup script.
+would immediately start drifting from the published package — it installs from
+the cloud environment's setup script.
 
-At <https://claude.ai/code>, open the environment selector, edit the
-environment, and put this in the **Setup script** field:
+**This is already set up.** The `Kira` cloud environment carries this setup
+script, and its network access is `Full`:
 
 ```bash
 #!/bin/bash
+# Install GSD (get-shit-done-cc) so its skills and agents are available in
+# cloud sessions. || true keeps an intermittent npm failure from blocking
+# session start, which a non-zero exit would do.
 npm install -g get-shit-done-cc || true
 ```
 
@@ -51,10 +54,12 @@ Notes on that script:
   A setup script that exits non-zero fails the whole session.
 - The environment cache keeps what the script installs, so this does not
   reinstall on every session.
-- npm is on the default allowed-domains list, so a **Trusted** environment can
-  reach it.
+- Changes to an environment apply to **new** sessions, not running ones.
 
-Verify the pinned version matches the desktop:
+To change it later: <https://claude.ai/code> → the environment chip in the
+composer → **Cloud** → hover `Kira` → the gear icon.
+
+Check the pinned version against the desktop:
 
 ```bash
 npm view get-shit-done-cc version
