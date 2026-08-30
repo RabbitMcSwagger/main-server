@@ -39,8 +39,7 @@
     "humanizer@humanizer": true,
     "caveman@caveman": true,
     "session-report@claude-plugins-official": true,
-    "notion@claude-plugins-official": true,
-    "imessage@claude-plugins-official": true
+    "notion@claude-plugins-official": true
   },
   "enableWorkflows": true
 }

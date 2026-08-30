@@ -4,7 +4,7 @@ How this repo's tooling reaches a phone, a tablet, and the desktop.
 
 ## Plugins — needs the setup script
 
-`.claude/settings.json` declares eight plugins across five marketplaces. Those
+`.claude/settings.json` declares seven plugins across five marketplaces. Those
 declarations are necessary but **not sufficient**: a project-scope file cannot
 register a marketplace that lives on a network location.
 
@@ -38,7 +38,6 @@ intent, and the CLI reads it to name each marketplace on registration.
 | `superpowers` | `anthropics/claude-plugins-official` |
 | `session-report` | `anthropics/claude-plugins-official` |
 | `notion` | `anthropics/claude-plugins-official` |
-| `imessage` | `anthropics/claude-plugins-official` |
 | `ponytail` | `DietrichGebert/ponytail` |
 | `watch` | `bradautomates/claude-video` |
 | `humanizer` | `blader/humanizer` |
@@ -53,6 +52,21 @@ plaintext variables box (see the credentials row below). It buys nothing:
 cloud sessions already carry an authenticated `github` MCP server pointed at
 the same `api.githubcopilot.com/mcp/`, exposing the same `mcp__github__*`
 tools.
+
+`imessage@claude-plugins-official` is out for the same reason and a different
+cause. Its MCP server reads the macOS Messages database directly, and on
+Ubuntu there is nothing to read — starting it by hand gives:
+
+```
+imessage channel: cannot read /root/Library/Messages/chat.db
+  unable to open database file
+```
+
+So the server exits at startup and every cloud session opened with
+`plugin:imessage:imessage (CONNECTION_CLOSED)`. No Windows machine has that
+database either, which leaves no device in this fleet where the plugin works.
+Re-add it to `enabledPlugins` and to the setup script's install list if a Mac
+ever joins.
 
 Two further conditions:
 
@@ -103,6 +117,12 @@ Notes on the setup script:
 
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
+- It also hides one, which is why each `claude plugin install` is retried once.
+  `superpowers` and `notion` are `source: url` entries — the official
+  marketplace holds only a git URL and a pinned sha for them, so installing
+  clones from github.com, unlike `session-report`, which is a path inside the
+  marketplace clone. A cloud session came up with those two missing and no
+  error anywhere; both installed on a plain retry.
 - The environment cache keeps what the script installs, so this does not
   reinstall on every session.
 - `bin/install.js --claude --global` writes hooks and a statusline into

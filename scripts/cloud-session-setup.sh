@@ -44,13 +44,15 @@ for plugin in \
   superpowers@claude-plugins-official \
   session-report@claude-plugins-official \
   notion@claude-plugins-official \
-  imessage@claude-plugins-official \
   ponytail@ponytail \
   watch@claude-video \
   humanizer@humanizer \
   caveman@caveman
 do
-  claude plugin install "$plugin" || true
+  # Retried once: superpowers and notion are url-sourced (they clone from
+  # github.com at install time) and a transient clone failure would otherwise
+  # be swallowed by the `|| true`, leaving the session silently without them.
+  claude plugin install "$plugin" || claude plugin install "$plugin" || true
 done
 
 # --------------------------------------------------- 4. Workspace trust ----
