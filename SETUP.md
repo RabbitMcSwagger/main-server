@@ -26,7 +26,7 @@ Two conditions apply:
 - On a local machine, `extraKnownMarketplaces` from a project file only takes
   effect after the workspace trust dialog is accepted for this folder.
 
-## What needs one manual step: GSD
+## GSD — configured, but the script is missing its second line
 
 GSD is the npm package `get-shit-done-cc`. It is not a plugin, so it cannot be
 declared in `.claude/settings.json`. It carries 67 skills, 33 agents, and a
@@ -40,14 +40,19 @@ no skills, no agents, nothing under `~/.claude/`. The package's
 be run explicitly.
 
 Rather than vendoring 4.5 MB of generated files into this repo — where they
-would immediately start drifting from the published package — install it in the
-cloud environment's setup script.
+would immediately start drifting from the published package — it installs from
+the cloud environment's setup script.
 
-At <https://claude.ai/code>, open the environment selector, edit the
-environment, and put this in the **Setup script** field:
+The `Kira` cloud environment already carries a GSD setup script and its network
+access is `Full`, so the plumbing is in place. What it carries is the one-line
+version, which installs the package without deploying it — so GSD is currently
+present but inert in cloud sessions. Change the **Setup script** field to:
 
 ```bash
 #!/bin/bash
+# Install GSD (get-shit-done-cc) so its skills and agents are available in
+# cloud sessions. || true keeps an intermittent npm failure from blocking
+# session start, which a non-zero exit would do.
 npm install -g get-shit-done-cc || true
 get-shit-done-cc --claude --global || true
 ```
@@ -61,14 +66,16 @@ Notes on that script:
   prompts for runtime and location, which a setup script cannot answer.
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
-- npm is on the default allowed-domains list, so a **Trusted** environment can
-  reach it.
+- Changes to an environment apply to **new** sessions, not running ones.
 - Re-running is safe. The installer migrates an existing install in place and
   preserves user files it did not write.
 - npm prints a deprecation notice for this package ("no longer supported").
   The install still succeeds; the notice is upstream, not a local fault.
 
-Verify the pinned version matches the desktop:
+Where to edit it, now or later: <https://claude.ai/code> → the environment chip
+in the composer → **Cloud** → hover `Kira` → the gear icon.
+
+Check the pinned version against the desktop:
 
 ```bash
 npm view get-shit-done-cc version
