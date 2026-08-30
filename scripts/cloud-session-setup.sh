@@ -45,7 +45,6 @@ for plugin in \
   session-report@claude-plugins-official \
   notion@claude-plugins-official \
   imessage@claude-plugins-official \
-  github@claude-plugins-official \
   ponytail@ponytail \
   watch@claude-video \
   humanizer@humanizer \
