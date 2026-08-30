@@ -63,12 +63,12 @@ Two further conditions:
   workspace trust not accepted`, and plugin-supplied hooks may not load. The
   setup script sets it; see the comment there before reusing that step.
 
-## GSD — configured, no action needed
+## GSD — needs the setup script
 
 GSD is the npm package `get-shit-done-cc`. It is not a plugin, so it cannot be
-declared in `.claude/settings.json`. It installs 66 skills, 33 agents, and a
-payload directory under `~/.claude/`, which is machine-local and not part of
-the clone.
+declared in `.claude/settings.json`. It carries 67 skills, 33 agents, and a
+payload directory that belong under `~/.claude/`, which is machine-local and
+not part of the clone.
 
 Rather than vendoring 4.5 MB of generated files into this repo — where they
 would immediately start drifting from the published package — it installs from
@@ -114,6 +114,9 @@ Notes on the setup script:
   description overhead. `--profile=standard` cuts that to ~13 skills / ~700
   tokens if that trade is worth it.
 - Changes to an environment apply to **new** sessions, not running ones.
+- npm prints a deprecation notice for this package ("no longer supported").
+  The install still succeeds and 1.42.3 is still the latest published version;
+  the notice is upstream, not a local fault.
 
 To change it later: <https://claude.ai/code> → the environment chip in the
 composer → **Cloud** → hover `Kira` → the gear icon.

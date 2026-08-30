@@ -1,5 +1,5 @@
 {
-  "$comment": "Portable Claude Code config for this repo. Cloud sessions install these plugins at session start from the marketplaces declared below. Keep this file free of absolute machine paths.",
+  "$comment": "Portable Claude Code config for this repo. These declarations are necessary but NOT sufficient: a project-scope file cannot register a marketplace on a network location, so the four git-sourced marketplaces below are never enumerated at session start. scripts/cloud-session-setup.sh registers them at user scope; see SETUP.md. Keep this file free of absolute machine paths.",
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
