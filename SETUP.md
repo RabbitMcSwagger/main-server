@@ -2,29 +2,63 @@
 
 How this repo's tooling reaches a phone, a tablet, and the desktop.
 
-## What already works, with no action
+## Plugins: one command per machine
 
-`.claude/settings.json` is committed, so any Claude Code session that clones
-this repo installs these plugins at session start:
+`.claude/settings.json` is committed and declares all nine plugins under
+`enabledPlugins`, plus the marketplaces they come from. Half of that works on
+its own; half does not.
 
-| Plugin | Marketplace |
-| --- | --- |
-| `superpowers` | `anthropics/claude-plugins-official` |
-| `session-report` | `anthropics/claude-plugins-official` |
-| `notion` | `anthropics/claude-plugins-official` |
-| `imessage` | `anthropics/claude-plugins-official` |
-| `github` | `anthropics/claude-plugins-official` |
-| `ponytail` | `DietrichGebert/ponytail` |
-| `watch` | `bradautomates/claude-video` |
-| `humanizer` | `blader/humanizer` |
-| `caveman` | `JuliusBrussee/caveman` |
+| Plugin | Marketplace | Arrives on its own? |
+| --- | --- | --- |
+| `github` | `anthropics/claude-plugins-official` | yes |
+| `imessage` | `anthropics/claude-plugins-official` | yes |
+| `session-report` | `anthropics/claude-plugins-official` | yes |
+| `superpowers` | `anthropics/claude-plugins-official` | no — needs install |
+| `notion` | `anthropics/claude-plugins-official` | no — needs install |
+| `ponytail` | `DietrichGebert/ponytail` | no — needs marketplace |
+| `watch` | `bradautomates/claude-video` | no — needs marketplace |
+| `humanizer` | `blader/humanizer` | no — needs marketplace |
+| `caveman` | `JuliusBrussee/caveman` | no — needs marketplace |
 
-Two conditions apply:
+Run this once per machine, or from the cloud environment's setup script:
 
-- The cloud environment needs network access at the **Trusted** level or above,
-  so it can reach GitHub to fetch each marketplace.
-- On a local machine, `extraKnownMarketplaces` from a project file only takes
-  effect after the workspace trust dialog is accepted for this folder.
+```bash
+bash .claude/bootstrap-plugins.sh
+```
+
+It is idempotent, so re-running it is free.
+
+### Why a committed file cannot do this
+
+Claude Code reads `extraKnownMarketplaces` from **operator** scopes only —
+policy settings, flag settings, and user settings. Project and local settings
+are "repo-authored" and are skipped unless the workspace trust dialog has been
+accepted for that folder. A cloud container never accepts it, so every
+marketplace declared in `.claude/settings.json` is ignored and each plugin
+naming one is dropped at startup:
+
+```
+Skipping orphaned enabledPlugins entry ponytail@ponytail: marketplace not registered
+Skipped auto-recording ponytail@ponytail — enabled only by repo-authored settings
+```
+
+`enabledPlugins` has no such gate — it is read from the merged settings across
+all scopes. That asymmetry is the whole problem. `claude plugin marketplace
+add` writes user scope, which is why the bootstrap script works.
+
+`claude-plugins-official` is the exception, and misleadingly so: Claude Code
+carries a hardcoded fallback for that one marketplace, triggered by any
+`@claude-plugins-official` entry in `enabledPlugins`. It registers regardless
+of what the project file says.
+
+`superpowers` and `notion` then fail for an unrelated reason — they are the only
+two entries whose marketplace source points outside the marketplace repo
+(`obra/superpowers` and `makenotion/claude-code-notion-plugin`), so they need a
+separate fetch that the startup reconcile does not perform.
+
+Note also that `claude plugin list` reads `installed_plugins.json`, which stays
+empty for settings-declared plugins. It printing "No plugins installed" is not
+evidence that anything is broken.
 
 ## GSD — configured, no action needed
 

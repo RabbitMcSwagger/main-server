@@ -1,5 +1,5 @@
 {
-  "$comment": "Portable Claude Code config for this repo. Cloud sessions install these plugins at session start from the marketplaces declared below. Keep this file free of absolute machine paths.",
+  "$comment": "enabledPlugins below works from project scope. extraKnownMarketplaces does NOT: Claude Code reads it from operator scopes only (policy/flag/user settings) unless the workspace trust dialog has been accepted, which cloud sessions never do. The four git marketplaces are therefore a declarative record here, and are registered per-machine in user scope by .claude/bootstrap-plugins.sh. See SETUP.md.",
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
