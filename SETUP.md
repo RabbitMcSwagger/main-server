@@ -29,9 +29,15 @@ Two conditions apply:
 ## What needs one manual step: GSD
 
 GSD is the npm package `get-shit-done-cc`. It is not a plugin, so it cannot be
-declared in `.claude/settings.json`. It installs 66 skills, 33 agents, and a
-payload directory under `~/.claude/`, which is machine-local and not part of
-the clone.
+declared in `.claude/settings.json`. It carries 67 skills, 33 agents, and a
+payload directory that belong under `~/.claude/`, which is machine-local and not
+part of the clone.
+
+Installing the package is only half of it. There is no `postinstall`, so
+`npm install -g` just puts the tarball in the global `node_modules` and stops —
+no skills, no agents, nothing under `~/.claude/`. The package's
+`get-shit-done-cc` bin is the installer that deploys the payload, and it has to
+be run explicitly.
 
 Rather than vendoring 4.5 MB of generated files into this repo — where they
 would immediately start drifting from the published package — install it in the
@@ -43,16 +49,24 @@ environment, and put this in the **Setup script** field:
 ```bash
 #!/bin/bash
 npm install -g get-shit-done-cc || true
+get-shit-done-cc --claude --global || true
 ```
 
 Notes on that script:
 
+- Both lines are required. The first fetches the package; the second deploys
+  ~3.5 MB of skills, agents, hooks, and a statusline into `~/.claude/`. Without
+  the second line GSD is on disk but invisible to the session.
+- `--claude --global` keeps the installer non-interactive. With no flags it
+  prompts for runtime and location, which a setup script cannot answer.
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
-- The environment cache keeps what the script installs, so this does not
-  reinstall on every session.
 - npm is on the default allowed-domains list, so a **Trusted** environment can
   reach it.
+- Re-running is safe. The installer migrates an existing install in place and
+  preserves user files it did not write.
+- npm prints a deprecation notice for this package ("no longer supported").
+  The install still succeeds; the notice is upstream, not a local fault.
 
 Verify the pinned version matches the desktop:
 
@@ -69,7 +83,7 @@ The desktop is on 1.42.3.
 | `~/.claude/skills/`, `~/.claude/agents/` | Machine-local. Commit to this repo's `.claude/` or enable on claude.ai instead. |
 | Plugins enabled only in `~/.claude/settings.json` | User scope does not transfer. This repo declares them instead. |
 | MCP servers added at user or local scope | Those write `~/.claude.json`. Use `claude mcp add --scope project` to write a committed `.mcp.json`. |
-| The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. |
+| The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. The installer writes correct native paths on whichever machine it runs on, which is the other reason to let it run per environment rather than commit its output. |
 | Credentials of any kind | Use the environment's API credentials store. |
 
 ## Skills on claude.ai
