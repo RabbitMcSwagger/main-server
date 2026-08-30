@@ -2,63 +2,57 @@
 
 How this repo's tooling reaches a phone, a tablet, and the desktop.
 
-## Plugins: one command per machine
+## Plugins — needs the setup script
 
-`.claude/settings.json` is committed and declares all nine plugins under
-`enabledPlugins`, plus the marketplaces they come from. Half of that works on
-its own; half does not.
+`.claude/settings.json` declares nine plugins across five marketplaces. Those
+declarations are necessary but **not sufficient**: a project-scope file cannot
+register a marketplace that lives on a network location.
 
-| Plugin | Marketplace | Arrives on its own? |
-| --- | --- | --- |
-| `github` | `anthropics/claude-plugins-official` | yes |
-| `imessage` | `anthropics/claude-plugins-official` | yes |
-| `session-report` | `anthropics/claude-plugins-official` | yes |
-| `superpowers` | `anthropics/claude-plugins-official` | no — needs install |
-| `notion` | `anthropics/claude-plugins-official` | no — needs install |
-| `ponytail` | `DietrichGebert/ponytail` | no — needs marketplace |
-| `watch` | `bradautomates/claude-video` | no — needs marketplace |
-| `humanizer` | `blader/humanizer` | no — needs marketplace |
-| `caveman` | `JuliusBrussee/caveman` | no — needs marketplace |
+Claude Code's rule, quoted from the binary:
 
-Run this once per machine, or from the cloud environment's setup script:
+> a marketplace on a network location must be declared under
+> `extraKnownMarketplaces` in USER or managed settings (project/local scope
+> cannot vouch for it)
 
-```bash
-bash .claude/bootstrap-plugins.sh
+`<repo>/.claude/settings.json` is project scope. So at session start the four
+git-sourced marketplaces are not merely skipped — they are never enumerated.
+A cloud session's own diagnostics confirm it:
+
+```json
+{"event":"headless_marketplace_reconcile_completed",
+ "data":{"installed_count":1,"failed_count":0,"skipped_count":0}}
+{"event":"plugins_sync_no_changes","data":{"count":0,"had_manifest":false}}
 ```
 
-It is idempotent, so re-running it is free.
+`installed_count: 1` is `claude-plugins-official` alone, which is built in and
+needs no vouching. Zero failures and zero skips because the other four were
+filtered out before the loop ran.
 
-### Why a committed file cannot do this
+The fix is to register them at **user** scope from the environment setup
+script, which is what `scripts/cloud-session-setup.sh` does. Keep the
+`extraKnownMarketplaces` block in `.claude/settings.json` — it still documents
+intent, and the CLI reads it to name each marketplace on registration.
 
-Claude Code reads `extraKnownMarketplaces` from **operator** scopes only —
-policy settings, flag settings, and user settings. Project and local settings
-are "repo-authored" and are skipped unless the workspace trust dialog has been
-accepted for that folder. A cloud container never accepts it, so every
-marketplace declared in `.claude/settings.json` is ignored and each plugin
-naming one is dropped at startup:
+| Plugin | Marketplace |
+| --- | --- |
+| `superpowers` | `anthropics/claude-plugins-official` |
+| `session-report` | `anthropics/claude-plugins-official` |
+| `notion` | `anthropics/claude-plugins-official` |
+| `imessage` | `anthropics/claude-plugins-official` |
+| `github` | `anthropics/claude-plugins-official` |
+| `ponytail` | `DietrichGebert/ponytail` |
+| `watch` | `bradautomates/claude-video` |
+| `humanizer` | `blader/humanizer` |
+| `caveman` | `JuliusBrussee/caveman` |
 
-```
-Skipping orphaned enabledPlugins entry ponytail@ponytail: marketplace not registered
-Skipped auto-recording ponytail@ponytail — enabled only by repo-authored settings
-```
+Two further conditions:
 
-`enabledPlugins` has no such gate — it is read from the merged settings across
-all scopes. That asymmetry is the whole problem. `claude plugin marketplace
-add` writes user scope, which is why the bootstrap script works.
-
-`claude-plugins-official` is the exception, and misleadingly so: Claude Code
-carries a hardcoded fallback for that one marketplace, triggered by any
-`@claude-plugins-official` entry in `enabledPlugins`. It registers regardless
-of what the project file says.
-
-`superpowers` and `notion` then fail for an unrelated reason — they are the only
-two entries whose marketplace source points outside the marketplace repo
-(`obra/superpowers` and `makenotion/claude-code-notion-plugin`), so they need a
-separate fetch that the startup reconcile does not perform.
-
-Note also that `claude plugin list` reads `installed_plugins.json`, which stays
-empty for settings-declared plugins. It printing "No plugins installed" is not
-evidence that anything is broken.
+- The cloud environment needs network access at **Trusted** or above to reach
+  GitHub for each marketplace clone.
+- Workspace trust (`hasTrustDialogAccepted`) is not required to register or
+  install, but while it is false Claude Code logs `Skipping plugin monitor -
+  workspace trust not accepted`, and plugin-supplied hooks may not load. The
+  setup script sets it; see the comment there before reusing that step.
 
 ## GSD — configured, no action needed
 
@@ -71,23 +65,45 @@ Rather than vendoring 4.5 MB of generated files into this repo — where they
 would immediately start drifting from the published package — it installs from
 the cloud environment's setup script.
 
-**This is already set up.** The `Kira` cloud environment carries this setup
-script, and its network access is `Full`:
+The `Kira` cloud environment carries a setup script and its network access is
+`Full`, but the script only ran `npm install -g get-shit-done-cc`. That puts
+the package on disk and nothing more — verified in a cloud session, where
+`get-shit-done-cc@1.42.3` was present globally while `~/.claude/skills/` held
+two entries and `~/.claude/agents/` did not exist.
+
+Installing the package is only half the job. `bin/install.js` is what populates
+`~/.claude`, and it must be run explicitly:
 
 ```bash
-#!/bin/bash
-# Install GSD (get-shit-done-cc) so its skills and agents are available in
-# cloud sessions. || true keeps an intermittent npm failure from blocking
-# session start, which a non-zero exit would do.
 npm install -g get-shit-done-cc || true
+node "$(npm root -g)/get-shit-done-cc/bin/install.js" --claude --global || true
 ```
 
-Notes on that script:
+With that second line, the same session went to 67 GSD skills and 33 agents.
+
+Note the package ships no bare `gsd` binary — only `get-shit-done-cc`,
+`gsd-sdk` and `gsd-tools`. `npx gsd --version` is therefore misleading: it
+finds nothing locally and silently downloads an unrelated registry package
+named `gsd`. Do not use it as an install check. Use:
+
+```bash
+npm list -g --depth=0 | grep get-shit-done-cc
+```
+
+Notes on the setup script:
 
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
 - The environment cache keeps what the script installs, so this does not
   reinstall on every session.
+- `bin/install.js --claude --global` writes hooks and a statusline into
+  `~/.claude/settings.json` using absolute paths (`/opt/node22/bin/node`,
+  `/root/.claude/hooks/...`). That is fine at user scope, which never leaves
+  the container. Do not run it with `--local`, which would write those paths
+  into this repo and break the portability rule in `CLAUDE.md`.
+- The full profile installs 67 skills, roughly 12k tokens of cold-start
+  description overhead. `--profile=standard` cuts that to ~13 skills / ~700
+  tokens if that trade is worth it.
 - Changes to an environment apply to **new** sessions, not running ones.
 
 To change it later: <https://claude.ai/code> → the environment chip in the
@@ -106,6 +122,7 @@ The desktop is on 1.42.3.
 | Thing | Why |
 | --- | --- |
 | `~/.claude/skills/`, `~/.claude/agents/` | Machine-local. Commit to this repo's `.claude/` or enable on claude.ai instead. |
+| `extraKnownMarketplaces` for network sources | Project scope cannot vouch for them. Register at user scope from the setup script. |
 | Plugins enabled only in `~/.claude/settings.json` | User scope does not transfer. This repo declares them instead. |
 | MCP servers added at user or local scope | Those write `~/.claude.json`. Use `claude mcp add --scope project` to write a committed `.mcp.json`. |
 | The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. |

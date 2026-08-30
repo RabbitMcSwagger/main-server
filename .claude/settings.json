@@ -1,5 +1,5 @@
 {
-  "$comment": "enabledPlugins below works from project scope. extraKnownMarketplaces does NOT: Claude Code reads it from operator scopes only (policy/flag/user settings) unless the workspace trust dialog has been accepted, which cloud sessions never do. The four git marketplaces are therefore a declarative record here, and are registered per-machine in user scope by .claude/bootstrap-plugins.sh. See SETUP.md.",
+  "$comment": "Portable Claude Code config for this repo. These declarations are necessary but NOT sufficient: a project-scope file cannot register a marketplace on a network location, so the four git-sourced marketplaces below are never enumerated at session start. scripts/cloud-session-setup.sh registers them at user scope; see SETUP.md. Keep this file free of absolute machine paths.",
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
