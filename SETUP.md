@@ -2,10 +2,36 @@
 
 How this repo's tooling reaches a phone, a tablet, and the desktop.
 
-## What already works, with no action
+## Plugins — needs the setup script
 
-`.claude/settings.json` is committed, so any Claude Code session that clones
-this repo installs these plugins at session start:
+`.claude/settings.json` declares nine plugins across five marketplaces. Those
+declarations are necessary but **not sufficient**: a project-scope file cannot
+register a marketplace that lives on a network location.
+
+Claude Code's rule, quoted from the binary:
+
+> a marketplace on a network location must be declared under
+> `extraKnownMarketplaces` in USER or managed settings (project/local scope
+> cannot vouch for it)
+
+`<repo>/.claude/settings.json` is project scope. So at session start the four
+git-sourced marketplaces are not merely skipped — they are never enumerated.
+A cloud session's own diagnostics confirm it:
+
+```json
+{"event":"headless_marketplace_reconcile_completed",
+ "data":{"installed_count":1,"failed_count":0,"skipped_count":0}}
+{"event":"plugins_sync_no_changes","data":{"count":0,"had_manifest":false}}
+```
+
+`installed_count: 1` is `claude-plugins-official` alone, which is built in and
+needs no vouching. Zero failures and zero skips because the other four were
+filtered out before the loop ran.
+
+The fix is to register them at **user** scope from the environment setup
+script, which is what `scripts/cloud-session-setup.sh` does. Keep the
+`extraKnownMarketplaces` block in `.claude/settings.json` — it still documents
+intent, and the CLI reads it to name each marketplace on registration.
 
 | Plugin | Marketplace |
 | --- | --- |
@@ -19,61 +45,72 @@ this repo installs these plugins at session start:
 | `humanizer` | `blader/humanizer` |
 | `caveman` | `JuliusBrussee/caveman` |
 
-Two conditions apply:
+Two further conditions:
 
-- The cloud environment needs network access at the **Trusted** level or above,
-  so it can reach GitHub to fetch each marketplace.
-- On a local machine, `extraKnownMarketplaces` from a project file only takes
-  effect after the workspace trust dialog is accepted for this folder.
+- The cloud environment needs network access at **Trusted** or above to reach
+  GitHub for each marketplace clone.
+- Workspace trust (`hasTrustDialogAccepted`) is not required to register or
+  install, but while it is false Claude Code logs `Skipping plugin monitor -
+  workspace trust not accepted`, and plugin-supplied hooks may not load. The
+  setup script sets it; see the comment there before reusing that step.
 
-## GSD — configured, but the script is missing its second line
+## GSD — needs the setup script
 
 GSD is the npm package `get-shit-done-cc`. It is not a plugin, so it cannot be
 declared in `.claude/settings.json`. It carries 67 skills, 33 agents, and a
-payload directory that belong under `~/.claude/`, which is machine-local and not
-part of the clone.
-
-Installing the package is only half of it. There is no `postinstall`, so
-`npm install -g` just puts the tarball in the global `node_modules` and stops —
-no skills, no agents, nothing under `~/.claude/`. The package's
-`get-shit-done-cc` bin is the installer that deploys the payload, and it has to
-be run explicitly.
+payload directory that belong under `~/.claude/`, which is machine-local and
+not part of the clone.
 
 Rather than vendoring 4.5 MB of generated files into this repo — where they
 would immediately start drifting from the published package — it installs from
 the cloud environment's setup script.
 
-The `Kira` cloud environment already carries a GSD setup script and its network
-access is `Full`, so the plumbing is in place. What it carries is the one-line
-version, which installs the package without deploying it — so GSD is currently
-present but inert in cloud sessions. Change the **Setup script** field to:
+The `Kira` cloud environment carries a setup script and its network access is
+`Full`, but the script only ran `npm install -g get-shit-done-cc`. That puts
+the package on disk and nothing more — verified in a cloud session, where
+`get-shit-done-cc@1.42.3` was present globally while `~/.claude/skills/` held
+two entries and `~/.claude/agents/` did not exist.
+
+Installing the package is only half the job. `bin/install.js` is what populates
+`~/.claude`, and it must be run explicitly:
 
 ```bash
-#!/bin/bash
-# Install GSD (get-shit-done-cc) so its skills and agents are available in
-# cloud sessions. || true keeps an intermittent npm failure from blocking
-# session start, which a non-zero exit would do.
 npm install -g get-shit-done-cc || true
-get-shit-done-cc --claude --global || true
+node "$(npm root -g)/get-shit-done-cc/bin/install.js" --claude --global || true
 ```
 
-Notes on that script:
+With that second line, the same session went to 67 GSD skills and 33 agents.
 
-- Both lines are required. The first fetches the package; the second deploys
-  ~3.5 MB of skills, agents, hooks, and a statusline into `~/.claude/`. Without
-  the second line GSD is on disk but invisible to the session.
-- `--claude --global` keeps the installer non-interactive. With no flags it
-  prompts for runtime and location, which a setup script cannot answer.
+Note the package ships no bare `gsd` binary — only `get-shit-done-cc`,
+`gsd-sdk` and `gsd-tools`. `npx gsd --version` is therefore misleading: it
+finds nothing locally and silently downloads an unrelated registry package
+named `gsd`. Do not use it as an install check. Use:
+
+```bash
+npm list -g --depth=0 | grep get-shit-done-cc
+```
+
+Notes on the setup script:
+
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
+- The environment cache keeps what the script installs, so this does not
+  reinstall on every session.
+- `bin/install.js --claude --global` writes hooks and a statusline into
+  `~/.claude/settings.json` using absolute paths (`/opt/node22/bin/node`,
+  `/root/.claude/hooks/...`). That is fine at user scope, which never leaves
+  the container. Do not run it with `--local`, which would write those paths
+  into this repo and break the portability rule in `CLAUDE.md`.
+- The full profile installs 67 skills, roughly 12k tokens of cold-start
+  description overhead. `--profile=standard` cuts that to ~13 skills / ~700
+  tokens if that trade is worth it.
 - Changes to an environment apply to **new** sessions, not running ones.
-- Re-running is safe. The installer migrates an existing install in place and
-  preserves user files it did not write.
 - npm prints a deprecation notice for this package ("no longer supported").
-  The install still succeeds; the notice is upstream, not a local fault.
+  The install still succeeds and 1.42.3 is still the latest published version;
+  the notice is upstream, not a local fault.
 
-Where to edit it, now or later: <https://claude.ai/code> → the environment chip
-in the composer → **Cloud** → hover `Kira` → the gear icon.
+To change it later: <https://claude.ai/code> → the environment chip in the
+composer → **Cloud** → hover `Kira` → the gear icon.
 
 Check the pinned version against the desktop:
 
@@ -88,9 +125,10 @@ The desktop is on 1.42.3.
 | Thing | Why |
 | --- | --- |
 | `~/.claude/skills/`, `~/.claude/agents/` | Machine-local. Commit to this repo's `.claude/` or enable on claude.ai instead. |
+| `extraKnownMarketplaces` for network sources | Project scope cannot vouch for them. Register at user scope from the setup script. |
 | Plugins enabled only in `~/.claude/settings.json` | User scope does not transfer. This repo declares them instead. |
 | MCP servers added at user or local scope | Those write `~/.claude.json`. Use `claude mcp add --scope project` to write a committed `.mcp.json`. |
-| The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. The installer writes correct native paths on whichever machine it runs on, which is the other reason to let it run per environment rather than commit its output. |
+| The desktop's GSD hooks | Every command in them hardcodes `C:/Program Files/nodejs/node.exe` and `C:/Users/bossk/...`. On Ubuntu each one exits 127. They are deliberately not committed. |
 | Credentials of any kind | Use the environment's API credentials store. |
 
 ## Skills on claude.ai
