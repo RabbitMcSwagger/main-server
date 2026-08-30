@@ -1,0 +1,14 @@
+# Never commit credentials or machine-local Claude state
+.claude/settings.local.json
+.claude.json
+.credentials.json
+.env
+.env.*
+*.pem
+*.key
+
+# OS noise
+Thumbs.db
+.DS_Store
+
+node_modules/

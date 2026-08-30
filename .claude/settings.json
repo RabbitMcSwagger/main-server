@@ -1,0 +1,47 @@
+{
+  "$comment": "Portable Claude Code config for this repo. Cloud sessions install these plugins at session start from the marketplaces declared below. Keep this file free of absolute machine paths.",
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DietrichGebert/ponytail.git"
+      }
+    },
+    "claude-video": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/bradautomates/claude-video.git"
+      }
+    },
+    "humanizer": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/blader/humanizer.git"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/JuliusBrussee/caveman.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "ponytail@ponytail": true,
+    "watch@claude-video": true,
+    "humanizer@humanizer": true,
+    "caveman@caveman": true,
+    "session-report@claude-plugins-official": true,
+    "notion@claude-plugins-official": true,
+    "imessage@claude-plugins-official": true,
+    "github@claude-plugins-official": true
+  },
+  "enableWorkflows": true
+}
