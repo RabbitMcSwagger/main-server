@@ -25,8 +25,10 @@ A cloud session's own diagnostics confirm it:
 ```
 
 `installed_count: 1` is `claude-plugins-official` alone, which is built in and
-needs no vouching. Zero failures and zero skips because the other four were
-filtered out before the loop ran.
+needs no vouching *in a session*. Zero failures and zero skips because the
+other four were filtered out before the loop ran. Note that being built in
+does not help the setup script, which runs before any session — see the notes
+below.
 
 The fix is to register them at **user** scope from the environment setup
 script, which is what `scripts/cloud-session-setup.sh` does. Keep the
@@ -117,12 +119,21 @@ Notes on the setup script:
 
 - `|| true` keeps an intermittent registry failure from blocking session start.
   A setup script that exits non-zero fails the whole session.
-- It also hides one, which is why each `claude plugin install` is retried once.
-  `superpowers` and `notion` are `source: url` entries — the official
-  marketplace holds only a git URL and a pinned sha for them, so installing
-  clones from github.com, unlike `session-report`, which is a path inside the
-  marketplace clone. A cloud session came up with those two missing and no
-  error anywhere; both installed on a plain retry.
+- It also hides one. A fresh session came up with `superpowers`, `notion` and
+  `session-report` all missing and no error anywhere on disk — the script
+  wrote no log, and `claude plugin list` had long since scrolled away. So the
+  script now tees install output to `~/.claude/main-server-setup.log` and, at
+  the end, names anything declared but not registered. `claude plugin install`
+  does not report failure reliably in its exit status, so the check reads the
+  postcondition — what `claude plugin list` actually shows — rather than `$?`.
+- All three that failed were `@claude-plugins-official`, and the four from
+  git marketplaces installed fine. That is the whole tell: `session-report` is
+  a path inside the marketplace clone with no network step at all, so a
+  transient clone failure never explained it. "Built in" makes the official
+  marketplace available to a *session*, which reads this repo's
+  `.claude/settings.json`; the setup script runs before any session exists, so
+  installing from it there resolved nothing. It is now registered explicitly
+  alongside the other four, which is idempotent when it is already on disk.
 - The environment cache keeps what the script installs, so this does not
   reinstall on every session.
 - `bin/install.js --claude --global` writes hooks and a statusline into

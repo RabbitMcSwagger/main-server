@@ -29,8 +29,12 @@ node "$(npm root -g)/get-shit-done-cc/bin/install.js" --claude --global || true
 # full 67 (~12k) if cold-start context budget matters more than coverage.
 
 # -------------------------------------------------------- 2. Marketplaces ---
-# claude-plugins-official is built in and needs no registration.
+# claude-plugins-official is built in, but "built in" only takes effect once a
+# session starts and reads this repo's .claude/settings.json. While this script
+# runs there is no session, so installing from it here resolves nothing and
+# fails silently. Register it explicitly like the rest; the add is idempotent.
 for url in \
+  anthropics/claude-plugins-official \
   https://github.com/DietrichGebert/ponytail.git \
   https://github.com/bradautomates/claude-video.git \
   https://github.com/blader/humanizer.git \
@@ -40,20 +44,40 @@ do
 done
 
 # ------------------------------------------------------------- 3. Plugins ---
-for plugin in \
-  superpowers@claude-plugins-official \
-  session-report@claude-plugins-official \
-  notion@claude-plugins-official \
-  ponytail@ponytail \
-  watch@claude-video \
-  humanizer@humanizer \
+PLUGINS=(
+  superpowers@claude-plugins-official
+  session-report@claude-plugins-official
+  notion@claude-plugins-official
+  ponytail@ponytail
+  watch@claude-video
+  humanizer@humanizer
   caveman@caveman
-do
-  # Retried once: superpowers and notion are url-sourced (they clone from
-  # github.com at install time) and a transient clone failure would otherwise
-  # be swallowed by the `|| true`, leaving the session silently without them.
-  claude plugin install "$plugin" || claude plugin install "$plugin" || true
+)
+
+# Keep the install output. `|| true` is what stops a failed install from
+# failing the whole session, and it is also what made the last failure
+# undiagnosable -- nothing on disk said which plugin did not land, or why.
+LOG="$HOME/.claude/main-server-setup.log"
+mkdir -p "$(dirname "$LOG")"
+: >"$LOG"
+for plugin in "${PLUGINS[@]}"; do
+  claude plugin install "$plugin" >>"$LOG" 2>&1 || true
 done
+
+# `claude plugin install` does not report failure reliably in its exit status,
+# so check the postcondition instead: what actually registered.
+missing=""
+installed="$(claude plugin list 2>/dev/null || true)"
+for plugin in "${PLUGINS[@]}"; do
+  case "$installed" in
+    *"> $plugin"*) ;;
+    *) missing="$missing $plugin" ;;
+  esac
+done
+if [ -n "$missing" ]; then
+  echo "SETUP WARNING: declared but not installed:$missing"
+  echo "SETUP WARNING: install output is in $LOG"
+fi
 
 # --------------------------------------------------- 4. Workspace trust ----
 # Optional. Without it Claude Code logs "Skipping plugin monitor - workspace
@@ -74,5 +98,3 @@ REPO_DIR="$REPO_DIR" node -e '
   d.projects[repo] = { ...(d.projects[repo] || {}), hasTrustDialogAccepted: true };
   fs.writeFileSync(f, JSON.stringify(d, null, 2));
 ' || true
-
-claude plugin list || true
