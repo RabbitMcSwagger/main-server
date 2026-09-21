@@ -76,9 +76,15 @@ for plugin in "${PLUGINS[@]}"; do
     *) missing="$missing $plugin" ;;
   esac
 done
+# Write the verdict to the log as well as stdout. Setup stdout is not kept
+# anywhere a later session can read, so a log that holds only install output
+# cannot distinguish "check passed" from "check never ran".
 if [ -n "$missing" ]; then
-  echo "SETUP WARNING: declared but not installed:$missing"
-  echo "SETUP WARNING: install output is in $LOG"
+  { echo "SETUP WARNING: declared but not installed:$missing"
+    echo "SETUP WARNING: install output is above, in $LOG"
+  } | tee -a "$LOG"
+else
+  echo "SETUP OK: all ${#PLUGINS[@]} declared plugins registered" | tee -a "$LOG"
 fi
 
 # --------------------------------------------------- 4. Workspace trust ----

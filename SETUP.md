@@ -123,10 +123,16 @@ Notes on the setup script:
 - It also hides one. A fresh session came up with `superpowers`, `notion` and
   `session-report` all missing and no error anywhere on disk — the script
   wrote no log, and `claude plugin list` had long since scrolled away. So the
-  script now tees install output to `~/.claude/main-server-setup.log` and, at
+  script now writes install output to `~/.claude/main-server-setup.log` and, at
   the end, names anything declared but not registered. `claude plugin install`
   does not report failure reliably in its exit status, so the check reads the
   postcondition — what `claude plugin list` actually shows — rather than `$?`.
+- The verdict goes to the log too, not only to setup stdout. Setup stdout is
+  not retained anywhere a later session can read, so a log holding only
+  install output cannot distinguish "check passed" from "check never ran".
+  A healthy run ends with `SETUP OK: all 8 declared plugins registered`; if
+  that line is absent, the check did not complete and the log is inconclusive
+  no matter how clean the install output above it looks.
 - All three that failed were `@claude-plugins-official`, and the four from
   git marketplaces installed fine. That is the whole tell: `session-report` is
   a path inside the marketplace clone with no network step at all, so a
