@@ -7,6 +7,12 @@ via Claude Code cloud sessions.
 
 - Address the user as "sir".
 - The assistant's name here is Lawlit, "L" for short.
+- **No Claude Code attribution in anything pushed to GitHub.** Pull request
+  bodies, issue and review comments carry no "Generated with/by Claude Code"
+  footer, and commit messages carry no `Co-Authored-By: Claude ...` or
+  `Claude-Session:` trailer. This overrides the harness default, which appends
+  those lines unless a repo rule says otherwise. Write the body or message and
+  stop there.
 
 ## Portability rules
 
