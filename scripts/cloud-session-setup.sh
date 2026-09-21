@@ -38,7 +38,8 @@ for url in \
   https://github.com/DietrichGebert/ponytail.git \
   https://github.com/bradautomates/claude-video.git \
   https://github.com/blader/humanizer.git \
-  https://github.com/JuliusBrussee/caveman.git
+  https://github.com/JuliusBrussee/caveman.git \
+  https://github.com/ayghri/i-have-adhd.git
 do
   claude plugin marketplace add "$url" || true
 done
@@ -52,6 +53,7 @@ PLUGINS=(
   watch@claude-video
   humanizer@humanizer
   caveman@caveman
+  i-have-adhd@i-have-adhd
 )
 
 # Keep the install output. `|| true` is what stops a failed install from

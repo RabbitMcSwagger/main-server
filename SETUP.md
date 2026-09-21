@@ -4,7 +4,7 @@ How this repo's tooling reaches a phone, a tablet, and the desktop.
 
 ## Plugins — needs the setup script
 
-`.claude/settings.json` declares seven plugins across five marketplaces. Those
+`.claude/settings.json` declares eight plugins across six marketplaces. Those
 declarations are necessary but **not sufficient**: a project-scope file cannot
 register a marketplace that lives on a network location.
 
@@ -14,7 +14,7 @@ Claude Code's rule, quoted from the binary:
 > `extraKnownMarketplaces` in USER or managed settings (project/local scope
 > cannot vouch for it)
 
-`<repo>/.claude/settings.json` is project scope. So at session start the four
+`<repo>/.claude/settings.json` is project scope. So at session start the five
 git-sourced marketplaces are not merely skipped — they are never enumerated.
 A cloud session's own diagnostics confirm it:
 
@@ -26,7 +26,7 @@ A cloud session's own diagnostics confirm it:
 
 `installed_count: 1` is `claude-plugins-official` alone, which is built in and
 needs no vouching *in a session*. Zero failures and zero skips because the
-other four were filtered out before the loop ran. Note that being built in
+other five were filtered out before the loop ran. Note that being built in
 does not help the setup script, which runs before any session — see the notes
 below.
 
@@ -44,6 +44,7 @@ intent, and the CLI reads it to name each marketplace on registration.
 | `watch` | `bradautomates/claude-video` |
 | `humanizer` | `blader/humanizer` |
 | `caveman` | `JuliusBrussee/caveman` |
+| `i-have-adhd` | `ayghri/i-have-adhd` |
 
 `github@claude-plugins-official` is deliberately **not** in that list. Its
 `.mcp.json` authenticates with `Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`, and

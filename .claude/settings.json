@@ -30,6 +30,12 @@
         "source": "git",
         "url": "https://github.com/JuliusBrussee/caveman.git"
       }
+    },
+    "i-have-adhd": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/ayghri/i-have-adhd.git"
+      }
     }
   },
   "enabledPlugins": {
@@ -39,7 +45,8 @@
     "humanizer@humanizer": true,
     "caveman@caveman": true,
     "session-report@claude-plugins-official": true,
-    "notion@claude-plugins-official": true
+    "notion@claude-plugins-official": true,
+    "i-have-adhd@i-have-adhd": true
   },
   "enableWorkflows": true
 }
